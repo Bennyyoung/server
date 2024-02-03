@@ -1,19 +1,11 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
-import { AppService } from './app.service';
-import { JwtAuthGuard } from '@/auth/guard/jwt-auth.guard';
+// src/app.controller.ts
+
+import { Controller, Get } from '@nestjs/common';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
-
   @Get()
   getHello(): string {
-    return this.appService.getHello();
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('profile')
-  getProfile(@Request() req): any {
-    return req.user;
+    return 'Welcome to the School Management System API!';
   }
 }

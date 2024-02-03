@@ -1,43 +1,49 @@
-import { Injectable } from '@nestjs/common';
-import { UsersService } from '../users/users.service';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { UsersService } from '../users/users.service';
+import { User } from '../users/user.schema';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly usersService: UsersService, private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly usersService: UsersService,
+  ) {}
 
-  async validateUser(username: string, password: string): Promise<any> {
-    const user = await this.usersService.findByUsername(username);
+ 
 
-    if (user && user.password === password) {
-      const { password, ...result } = user;
-      return result;
+
+  async generateJwtToken(user: User): Promise<string> {
+    const payload = { sub: user, username: user.username, role: user.role }; // Change _id to id
+    return this.jwtService.sign(payload);
+  }
+
+
+  async register(userDto: any): Promise<User> {
+    // Check if the username is already taken
+    const existingUser = await this.usersService.findOneByUsername(userDto.username);
+    if (existingUser) {
+      throw new NotFoundException('Username is already taken.');
+    }
+
+    // Hash the password before storing it
+    const hashedPassword = await bcrypt.hash(userDto.password, 10);
+
+    // Create and save the new user
+    const newUser = await this.usersService.create({ ...userDto, password: hashedPassword });
+    return newUser;
+  }
+
+  async validateUser(username: string, password: string): Promise<User | null> {
+    // Find the user by username
+    const user = await this.usersService.findOneByUsername(username);
+
+    // If the user is found, compare the provided password with the hashed password
+    if (user && (await bcrypt.compare(password, user.password))) {
+      return user;
     }
 
     return null;
-  }
-
-  async validateUserById(userId: string): Promise<any> {
-    return this.usersService.findById(userId);
-  }
-
-  async register(user): Promise<any> {
-    const createdUser = await this.usersService.registerUser(user);
-    const { password, ...result } = createdUser;
-
-    return result;
-  }
-
-  async login(user): Promise<any> {
-    const payload = {
-      sub: user.userId,
-      username: user.username,
-      roles: user.roles,
-      permissions: user.permissions,
-    };
-
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
   }
 }

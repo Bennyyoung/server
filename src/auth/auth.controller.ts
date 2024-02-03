@@ -1,12 +1,6 @@
-import { Controller, Post, Request, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Request, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LocalAuthGuard } from '@/auth/guard/local-auth.guard';
-import { JwtAuthGuard } from '@/auth/guard/jwt-auth.guard';
-import { RolesGuard } from '@/auth/guard/roles.guard';
-import { PermissionsGuard } from '@/auth/guard/permissions.guard';
-import { Roles } from '@/common/decorators/roles.decorator';
-// no permissions decorator
-import { Permissions } from '@/permissions/permissions.decorator';
+import { LocalAuthGuard } from './local-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -14,15 +8,21 @@ export class AuthController {
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  async login(@Request() req: any): Promise<any> {
-    return this.authService.login(req.user);
+  async login(@Request() req) {
+    // Upon successful login, generate JWT token
+    return { access_token: await this.authService.generateJwtToken(req.user) };
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('admin')
-  @Permissions('manage_users')
-  @Post('protected')
-  getProtectedData() {
-    return { message: 'This data is protected.' };
+  @Post('register')
+  async register(@Body() userDto: any) {
+    // Register a new user
+    const newUser = await this.authService.register(userDto);
+    return { message: 'User registered successfully', user: newUser };
+  }
+
+  @Post('user')
+  getUser(@Request() req) {
+    // Return user details from the request (assuming the user is authenticated)
+    return req.user;
   }
 }
